@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kalkulator Kurs USD → IDR</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💱</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F4F6F9; --surface:#FFFFFF; --ink:#16233F; --muted:#5A6478;
+  --line:#D9DFE8; --accent:#0B7A63; --accent-soft:#E3F2EE; --warn:#9A5B00; --warn-soft:#FFF4E0;
+  --err:#B42318; --focus:#2F6FEB;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --paper:#0F1520; --surface:#172030; --ink:#E7ECF3; --muted:#9AA5B8;
+    --line:#2A3548; --accent:#46C7A6; --accent-soft:#16352F; --warn:#F2B95C; --warn-soft:#3A2C12;
+    --err:#FF8A80; --focus:#7FA8FF;
+    color-scheme:dark;
+  }
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:"Instrument Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:720px;margin:0 auto;padding:28px 18px 48px}
+h1{font-family:"Newsreader",Georgia,serif;font-weight:600;font-size:1.75rem;line-height:1.2;margin:0 0 4px}
+.sub{color:var(--muted);margin:0 0 22px;font-size:.95rem}
+.num{font-variant-numeric:tabular-nums}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+/* rate strip */
+.rate{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;
+  padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.rate .val{font-weight:600;font-size:1.05rem}
+.rate .meta{color:var(--muted);font-size:.85rem;flex:1 1 220px}
+.rate.stale{border-color:var(--warn);background:var(--warn-soft)}
+.err-detail{margin:8px 0 0;font-size:.82rem;color:var(--err);word-break:break-word}
+
+/* main calc */
+.calc{margin-top:18px;padding:22px 20px;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+label{display:block;font-weight:600;font-size:.9rem;margin-bottom:6px}
+.usd{display:flex;align-items:center;border:1.5px solid var(--line);border-radius:10px;background:var(--paper);padding:0 14px}
+.usd:focus-within{border-color:var(--accent)}
+.usd span{color:var(--muted);font-weight:600}
+.usd input{flex:1;border:0;background:transparent;padding:14px 10px;font-size:1.6rem;font-weight:600;min-width:0}
+.usd input:focus{outline:none}
+.hint{font-size:.8rem;color:var(--muted);margin-top:6px}
+
+.result{margin-top:22px;padding-top:20px;border-top:1px dashed var(--line)}
+.result .idr{font-family:"Newsreader",Georgia,serif;font-weight:600;font-size:clamp(2rem,7vw,2.9rem);line-height:1.1;word-break:break-all}
+.result .formula{color:var(--muted);font-size:.9rem;margin-top:8px}
+.result .words{margin-top:12px;padding:10px 12px;background:var(--accent-soft);border-radius:8px;font-style:italic;font-size:.95rem}
+
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.btn{border:1px solid var(--line);background:var(--surface);padding:9px 14px;border-radius:8px;cursor:pointer;font-weight:500;font-size:.9rem}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+@media (prefers-color-scheme:dark){.btn.primary{color:#0F1520}}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* options */
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:22px}
+@media (max-width:560px){.opts{grid-template-columns:1fr}}
+select,.field{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--paper)}
+.check{display:flex;gap:8px;align-items:center;font-weight:500;font-size:.9rem;margin-bottom:6px;cursor:pointer}
+.check input{width:18px;height:18px;accent-color:var(--accent)}
+.field:disabled{opacity:.5}
+
+/* history */
+.hist{margin-top:28px}
+.hist h2{font-family:"Newsreader",Georgia,serif;font-size:1.3rem;font-weight:600;margin:0 0 10px}
+.save-row{display:flex;gap:8px;flex-wrap:wrap}
+.save-row .field{flex:1 1 200px;width:auto}
+.tbl{overflow-x:auto;margin-top:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.88rem;min-width:560px}
+th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--muted);font-weight:600;font-size:.8rem}
+td.r,th.r{text-align:right}
+tr:last-child td{border-bottom:0}
+.empty{padding:18px;color:var(--muted);font-size:.9rem}
+.del{border:0;background:none;color:var(--muted);cursor:pointer;padding:2px 6px}
+.del:hover{color:var(--err)}
+
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(20px);
+  background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:8px;font-size:.9rem;opacity:0;pointer-events:none;transition:.2s}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+footer{margin-top:32px;color:var(--muted);font-size:.8rem}
+footer a{color:inherit}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Kalkulator Kurs USD → IDR</h1>
+  <p class="sub">Ketik nominal dolar, rupiah langsung muncul beserta terbilangnya.</p>
+
+  <div class="rate" id="rateBox" aria-live="polite">
+    <div class="val num" id="rateVal">Memuat kurs…</div>
+    <div class="meta" id="rateMeta"></div>
+    <button class="btn" id="reloadBtn" type="button">Muat ulang kurs</button>
+    <div style="flex-basis:100%" id="errWrap" hidden><p class="err-detail" id="errDetail"></p></div>
+  </div>
+
+  <section class="calc">
+    <label for="usd">Nominal USD</label>
+    <div class="usd">
+      <span>$</span>
+      <input id="usd" class="num" inputmode="decimal" autocomplete="off" placeholder="0.00" autofocus>
+    </div>
+    <div class="hint">Desimal boleh pakai titik atau koma, misalnya 1250.50 atau 1250,50.</div>
+
+    <div class="result" aria-live="polite">
+      <div class="idr num" id="idr">Rp 0</div>
+      <div class="formula num" id="formula">Masukkan nominal USD untuk menghitung.</div>
+      <div class="words" id="words">nol rupiah</div>
+      <div class="actions">
+        <button class="btn primary" type="button" data-copy="plain">Salin angka</button>
+        <button class="btn" type="button" data-copy="rp">Salin dengan "Rp"</button>
+        <button class="btn" type="button" data-copy="words">Salin terbilang</button>
+      </div>
+    </div>
+
+    <div class="opts">
+      <div>
+        <label for="round">Pembulatan</label>
+        <select id="round">
+          <option value="1">Rupiah penuh</option>
+          <option value="100">Ratusan</option>
+          <option value="1000">Ribuan</option>
+          <option value="0">Tanpa pembulatan</option>
+        </select>
+      </div>
+      <div>
+        <label class="check"><input type="checkbox" id="useCustom"> Pakai kurs sendiri</label>
+        <input id="customRate" class="field num" inputmode="decimal" placeholder="mis. 16250 (KMK / BI / bank)" disabled>
+      </div>
+    </div>
+  </section>
+
+  <section class="hist">
+    <h2>Riwayat konversi</h2>
+    <div class="save-row">
+      <input id="note" class="field" placeholder="No. invoice / catatan (opsional)">
+      <button class="btn primary" id="saveBtn" type="button">Simpan ke riwayat</button>
+    </div>
+    <div class="tbl"><div id="histBody"></div></div>
+    <div class="actions">
+      <button class="btn" id="copyHist" type="button">Salin riwayat untuk Excel</button>
+      <button class="btn" id="clearHist" type="button">Hapus semua riwayat</button>
+    </div>
+  </section>
+
+  <footer>Kurs referensi ECB via <a href="https://frankfurter.dev" target="_blank" rel="noopener">Frankfurter</a>, diperbarui tiap hari kerja sekitar pukul 21.00–22.00 WIB. Riwayat hanya tersimpan di browser ini.</footer>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function(){
+  const API = "https://api.frankfurter.dev/v1/latest?base=USD&symbols=IDR";
+  const $ = id => document.getElementById(id);
+  const store = {
+    get(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } },
+    set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+  };
+
+  let apiRate = null, apiDate = null, fetchedAt = null;
+
+  // ---------- number helpers ----------
+  function parseNum(s){
+    s = String(s||"").trim().replace(/\s|\$|rp/gi,"");
+    if(!s) return NaN;
+    const hasC = s.includes(","), hasD = s.includes(".");
+    if(hasC && hasD){
+      if(s.lastIndexOf(",") > s.lastIndexOf(".")) s = s.replace(/\./g,"").replace(",",".");
+      else s = s.replace(/,/g,"");
+    } else if(hasC){
+      const parts = s.split(",");
+      s = parts.length > 2 ? parts.join("") : s.replace(",",".");
+    } else if(hasD){
+      const parts = s.split(".");
+      if(parts.length > 2) s = parts.join("");
+    }
+    if(!/^\d*\.?\d*$/.test(s)) return NaN;
+    return parseFloat(s);
+  }
+  const fmtID = (n,dec) => n.toLocaleString("id-ID",{minimumFractionDigits:dec,maximumFractionDigits:dec});
+
+  // ---------- terbilang ----------
+  const SAT = ["","satu","dua","tiga","empat","lima","enam","tujuh","delapan","sembilan","sepuluh","sebelas"];
+  function t(n){
+    n = Math.floor(n);
+    if(n < 12) return SAT[n];
+    if(n < 20) return SAT[n-10] + " belas";
+    if(n < 100) return SAT[Math.floor(n/10)] + " puluh" + (n%10 ? " " + SAT[n%10] : "");
+    if(n < 200) return "seratus" + (n-100 ? " " + t(n-100) : "");
+    if(n < 1000) return SAT[Math.floor(n/100)] + " ratus" + (n%100 ? " " + t(n%100) : "");
+    if(n < 2000) return "seribu" + (n-1000 ? " " + t(n-1000) : "");
+    const units = [[1e12,"triliun"],[1e9,"miliar"],[1e6,"juta"],[1e3,"ribu"]];
+    for(const [v,name] of units){
+      if(n >= v){
+        const head = Math.floor(n/v), rest = n - head*v;
+        return t(head) + " " + name + (rest ? " " + t(rest) : "");
+      }
+    }
+    return "";
+  }
+  function terbilang(x){
+    if(!isFinite(x) || x <= 0) return "nol rupiah";
+    const whole = Math.floor(x + 1e-9);
+    let s = (whole ? t(whole) : "nol");
+    const cents = Math.round((x - whole) * 100);
+    if(cents > 0){
+      const d = String(cents).padStart(2,"0").replace(/0$/,"");
+      s += " koma " + d.split("").map(c => c==="0" ? "nol" : SAT[+c]).join(" ");
+    }
+    return s.replace(/\s+/g," ").trim() + " rupiah";
+  }
+
+  // ---------- rate ----------
+  function currentRate(){
+    if($("useCustom").checked){
+      const r = parseNum($("customRate").value);
+      return isFinite(r) && r > 0 ? {rate:r, label:"kurs sendiri"} : null;
+    }
+    return apiRate ? {rate:apiRate, label:"kurs ECB " + apiDate} : null;
+  }
+
+  function showRate(stale, errMsg){
+    const box = $("rateBox");
+    box.classList.toggle("stale", !!stale);
+    if(apiRate){
+      $("rateVal").textContent = "1 USD = Rp " + fmtID(apiRate, 2);
+      const when = fetchedAt ? new Date(fetchedAt).toLocaleString("id-ID",{dateStyle:"medium",timeStyle:"short"}) : "-";
+      $("rateMeta").textContent = (stale ? "Gagal memuat kurs baru, memakai kurs terakhir. " : "") +
+        "Tanggal kurs " + apiDate + " · dicek " + when;
+    } else {
+      $("rateVal").textContent = "Kurs belum tersedia";
+      $("rateMeta").textContent = "Centang \"Pakai kurs sendiri\" untuk tetap menghitung.";
+    }
+    $("errWrap").hidden = !errMsg;
+    $("errDetail").textContent = errMsg ? "Detail: " + errMsg : "";
+  }
+
+  async function loadRate(){
+    const btn = $("reloadBtn");
+    btn.disabled = true; btn.textContent = "Memuat…";
+    try{
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), 12000);
+      const res = await fetch(API, {cache:"no-store", signal:ctl.signal});
+      clearTimeout(timer);
+      if(!res.ok) throw new Error("HTTP " + res.status + " " + res.statusText);
+      const data = await res.json();
+      const r = data && data.rates && data.rates.IDR;
+      if(!r) throw new Error("Respons API tidak berisi kurs IDR");
+      apiRate = r; apiDate = data.date; fetchedAt = Date.now();
+      store.set("kk_rate", {rate:apiRate, date:apiDate, at:fetchedAt});
+      showRate(false, null);
+    }catch(e){
+      const msg = e.name === "AbortError" ? "Waktu habis (12 detik) saat menghubungi API" : (e.message || String(e));
+      const cached = store.get("kk_rate");
+      if(cached && !apiRate){ apiRate = cached.rate; apiDate = cached.date; fetchedAt = cached.at; }
+      showRate(true, msg);
+    }finally{
+      btn.disabled = false; btn.textContent = "Muat ulang kurs";
+      calc();
+    }
+  }
+
+  // ---------- calc ----------
+  let last = null;
+  function calc(){
+    const usd = parseNum($("usd").value);
+    const r = currentRate();
+    const step = +$("round").value;
+    if(!isFinite(usd) || usd < 0 || !r){
+      last = null;
+      $("idr").textContent = "Rp 0";
+      $("formula").textContent = !r ? "Kurs belum tersedia. Muat ulang kurs atau pakai kurs sendiri." :
+        ($("usd").value.trim() ? "Nominal USD tidak valid." : "Masukkan nominal USD untuk menghitung.");
+      $("words").textContent = "nol rupiah";
+      return;
+    }
+    const raw = usd * r.rate;
+    const val = step ? Math.round(raw / step) * step : Math.round(raw * 100) / 100;
+    const dec = step ? 0 : 2;
+    const roundLbl = {1:"dibulatkan ke rupiah penuh",100:"dibulatkan ke ratusan",1000:"dibulatkan ke ribuan",0:"tanpa pembulatan"}[step];
+    last = {usd, rate:r.rate, rateLabel:r.label, idr:val, dec, words:terbilang(val)};
+    $("idr").textContent = "Rp " + fmtID(val, dec);
+    $("formula").textContent = "USD " + fmtID(usd,2) + " × Rp " + fmtID(r.rate,2) + " = Rp " + fmtID(raw,2) +
+      " → " + roundLbl + " (" + r.label + ")";
+    $("words").textContent = last.words;
+  }
+
+  // ---------- copy ----------
+  async function copy(text, okMsg){
+    try{ await navigator.clipboard.writeText(text); }
+    catch(e){
+      const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta);
+      ta.select(); try{ document.execCommand("copy"); }catch(_){} ta.remove();
+    }
+    toast(okMsg);
+  }
+  let tt;
+  function toast(m){ const el=$("toast"); el.textContent=m; el.classList.add("show"); clearTimeout(tt); tt=setTimeout(()=>el.classList.remove("show"),1800); }
+
+  document.querySelectorAll("[data-copy]").forEach(b => b.addEventListener("click", () => {
+    if(!last){ toast("Belum ada hasil untuk disalin"); return; }
+    const k = b.dataset.copy;
+    if(k==="plain") copy(fmtID(last.idr,last.dec), "Angka disalin");
+    if(k==="rp") copy("Rp " + fmtID(last.idr,last.dec), "Disalin dengan Rp");
+    if(k==="words") copy(last.words, "Terbilang disalin");
+  }));
+
+  // ---------- history ----------
+  let hist = store.get("kk_hist") || [];
+  function renderHist(){
+    const box = $("histBody");
+    if(!hist.length){ box.innerHTML = '<div class="empty">Belum ada riwayat. Hitung nominal, isi no. invoice, lalu klik "Simpan ke riwayat".</div>'; return; }
+    const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+    box.innerHTML = '<table><thead><tr><th>Waktu</th><th>Catatan</th><th class="r">USD</th><th class="r">Kurs</th><th class="r">IDR</th><th></th></tr></thead><tbody>' +
+      hist.map((h,i) => '<tr><td>' + esc(h.time) + '</td><td>' + esc(h.note||"-") + '</td><td class="r num">' + fmtID(h.usd,2) +
+        '</td><td class="r num">' + fmtID(h.rate,2) + '</td><td class="r num">' + fmtID(h.idr,h.dec) +
+        '</td><td><button class="del" data-i="' + i + '" aria-label="Hapus baris">✕</button></td></tr>').join("") +
+      '</tbody></table>';
+    box.querySelectorAll(".del").forEach(b => b.addEventListener("click", () => {
+      hist.splice(+b.dataset.i, 1); store.set("kk_hist", hist); renderHist();
+    }));
+  }
+  $("saveBtn").addEventListener("click", () => {
+    if(!last){ toast("Belum ada hasil untuk disimpan"); return; }
+    hist.unshift({time:new Date().toLocaleString("id-ID",{dateStyle:"short",timeStyle:"short"}), note:$("note").value.trim(),
+      usd:last.usd, rate:last.rate, idr:last.idr, dec:last.dec, src:last.rateLabel});
+    hist = hist.slice(0,200);
+    store.set("kk_hist", hist); renderHist();
+    $("note").value = ""; toast("Disimpan ke riwayat");
+  });
+  $("copyHist").addEventListener("click", () => {
+    if(!hist.length){ toast("Riwayat masih kosong"); return; }
+    const rows = [["Waktu","Catatan","USD","Kurs","IDR","Sumber kurs"]].concat(
+      hist.map(h => [h.time, h.note||"", fmtID(h.usd,2), fmtID(h.rate,2), fmtID(h.idr,h.dec), h.src||""]));
+    copy(rows.map(r => r.join("\t")).join("\n"), "Riwayat disalin, tempel di Excel");
+  });
+  $("clearHist").addEventListener("click", () => {
+    if(!hist.length) return;
+    if(confirm("Hapus semua riwayat konversi?")){ hist = []; store.set("kk_hist", hist); renderHist(); }
+  });
+
+  // ---------- events ----------
+  $("usd").addEventListener("input", calc);
+  $("round").addEventListener("change", () => { store.set("kk_round", $("round").value); calc(); });
+  $("useCustom").addEventListener("change", () => {
+    $("customRate").disabled = !$("useCustom").checked;
+    if($("useCustom").checked) $("customRate").focus();
+    store.set("kk_custom", {on:$("useCustom").checked, v:$("customRate").value}); calc();
+  });
+  $("customRate").addEventListener("input", () => { store.set("kk_custom", {on:$("useCustom").checked, v:$("customRate").value}); calc(); });
+  $("reloadBtn").addEventListener("click", loadRate);
+
+  // restore prefs
+  const rd = store.get("kk_round"); if(rd !== null) $("round").value = rd;
+  const cu = store.get("kk_custom"); if(cu){ $("useCustom").checked = !!cu.on; $("customRate").value = cu.v||""; $("customRate").disabled = !cu.on; }
+  const cached = store.get("kk_rate"); if(cached){ apiRate = cached.rate; apiDate = cached.date; fetchedAt = cached.at; showRate(false,null); }
+
+  renderHist(); calc(); loadRate();
+  setInterval(loadRate, 60*60*1000);
+})();
+</script>
+</body>
+</html>
